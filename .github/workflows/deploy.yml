@@ -1,0 +1,75 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploying via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -e
+
+            # Definir ruta según la rama
+            BRANCH="${{ github.ref_name }}"
+            if [ "$BRANCH" = "main" ]; then
+                TARGET_DIR="/var/www/home-master"
+            else
+                TARGET_DIR="/var/www/home-develop"
+            fi
+
+            # Intentar cargar NVM o rutas comunes
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            export PATH=$PATH:/usr/local/bin:$HOME/bin
+            
+            # Crear directorio si no existe y entrar
+            mkdir -p $TARGET_DIR
+            cd $TARGET_DIR
+            
+            echo "📥 Desplegando rama $BRANCH en $TARGET_DIR..."
+            
+            # Si no es un repo git, lo limpiamos y clonamos de cero
+            if [ ! -d ".git" ]; then
+                echo "Carpeta no es un repositorio git o está sucia. Limpiando y clonando..."
+                rm -rf * .[!.]* || true
+                git clone -b $BRANCH https://x-access-token:${{ secrets.TOKEN }}@github.com/${{ github.repository }}.git .
+            else
+                # Actualizar URL con token
+                git remote set-url origin https://x-access-token:${{ secrets.TOKEN }}@github.com/${{ github.repository }}.git
+                git fetch origin $BRANCH
+                git reset --hard origin/$BRANCH
+            fi
+
+            echo "🔧 Configurando variables de entorno (.env)..."
+            if [ "$BRANCH" = "main" ]; then
+                echo "${{ secrets.ENV_PROD }}" > .env
+            else
+                echo "${{ secrets.ENV_DEV }}" > .env
+            fi
+            
+            echo "📦 Instalando dependencias con pnpm..."
+            if ! command -v pnpm &> /dev/null
+            then
+                npm install -g pnpm
+            fi
+            
+            pnpm install
+            
+            echo "🏗️ Construyendo el proyecto..."
+            pnpm run build
+            
+            echo "✅ ¡Despliegue de $BRANCH finalizado con éxito!"
