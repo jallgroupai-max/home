@@ -85,8 +85,8 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
       } catch (error) {
           console.error("Failed to fetch exchange rate", error);
           toast({
-              title: "Aviso",
-              description: "No se pudo obtener la tasa en tiempo real. Usando tasa referencial.",
+              title: t("recharge.toast.rateWarning"),
+              description: t("recharge.toast.rateWarningDesc"),
           });
       } finally {
           setLoadingRate(false);
@@ -113,8 +113,8 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
     } catch (error) {
       console.error("Failed to fetch payment methods", error);
       toast({
-        title: "Error",
-        description: "No se pudieron cargar los métodos de pago.",
+        title: t("recharge.error.title"),
+        description: t("recharge.toast.methodsErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -147,14 +147,14 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
       const result = await apiService.upload<{ key: string, url: string }>('/storage/upload', file, token!);
       setProofKey(result.key);
       toast({
-        title: "Comprobante cargado",
-        description: "El comprobante se ha subido exitosamente.",
+        title: t("recharge.toast.proofUploaded"),
+        description: t("recharge.toast.proofUploadedDesc"),
       });
     } catch (error) {
         console.error("Upload error", error);
       toast({
-        title: "Error de carga",
-        description: "No se pudo subir el comprobante. Intente de nuevo.",
+        title: t("recharge.toast.uploadError"),
+        description: t("recharge.toast.uploadErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -185,15 +185,15 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
       }, token!);
 
       toast({
-        title: "Recarga en proceso",
-        description: "Tu pago ha sido enviado y será verificado pronto.",
+        title: t("recharge.inProgress"),
+        description: t("recharge.inProgressDesc"),
       });
       handleClose(false);
     } catch (error: any) {
         console.error("Payment error", error);
       toast({
-        title: "Error",
-        description: error.message || "Hubo un problema al procesar tu pago.",
+        title: t("recharge.error.title"),
+        description: error.message || t("recharge.toast.paymentErrorDesc"),
         variant: "destructive",
       });
     } finally {
@@ -255,18 +255,18 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {step === "method" && "Método de Recarga"}
-            {step === "amount" && "Monto a Recargar"}
-            {step === "payment" && "Detalles del Pago"}
-            {step === "confirm" && "Confirmar Recarga"}
-            {step === "card_maintenance" && "Mantenimiento"}
+            {step === "method" && t("recharge.methodTitle")}
+            {step === "amount" && t("recharge.amountTitle")}
+            {step === "payment" && t("recharge.paymentTitle")}
+            {step === "confirm" && t("recharge.confirmTitle")}
+            {step === "card_maintenance" && t("recharge.cardMaintenanceTitle")}
           </DialogTitle>
           <DialogDescription>
-            {step === "method" && "Selecciona cómo deseas realizar tu pago"}
-            {step === "amount" && "Ingresa la cantidad en USD"}
-            {step === "payment" && "Realiza el pago y registra los detalles"}
-            {step === "confirm" && "Verifica la información antes de enviar"}
-            {step === "card_maintenance" && "Este método está temporalmente deshabilitado"}
+            {step === "method" && t("recharge.methodDesc")}
+            {step === "amount" && t("recharge.amountDesc")}
+            {step === "payment" && t("recharge.paymentDesc")}
+            {step === "confirm" && t("recharge.confirmDesc")}
+            {step === "card_maintenance" && t("recharge.cardMaintenanceMessage")}
           </DialogDescription>
         </DialogHeader>
 
@@ -300,7 +300,7 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                 </Label>
               )})}
               {paymentMethods.length === 0 && (
-                  <p className="text-center text-muted-foreground">No hay métodos de pago disponibles.</p>
+                  <p className="text-center text-muted-foreground">{t("recharge.noMethods")}</p>
               )}
             </RadioGroup>
             )
@@ -310,15 +310,15 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
           {step === "amount" && (
             <div className="space-y-6">
                  <div className="p-4 rounded-lg border border-border">
-                    <h4 className="font-medium mb-2 text-primary">Información de Tarifas:</h4>
+                    <h4 className="font-medium mb-2 text-primary">{t("recharge.ratesInfo")}</h4>
                     <ul className="text-sm space-y-1">
-                        <li>• 1 USD = {POINTS_PER_DOLLAR} Puntos</li>
-                        <li>• 1 Día de ChatGPT = {POINTS_PER_DAY} Puntos</li>
+                        <li>• 1 USD = {POINTS_PER_DOLLAR} {t("dashboard.points")}</li>
+                        <li>• 1 {t("pricing.day")} ChatGPT = {POINTS_PER_DAY} {t("dashboard.points")}</li>
                     </ul>
                 </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amount">Monto en USD</Label>
+                <Label htmlFor="amount">{t("recharge.amountUsdLabel")}</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input
@@ -333,13 +333,13 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                   />
                 </div>
                 {amountNum > 0 && amountNum < 1 && (
-                  <p className="text-sm text-destructive">El monto mínimo es $1.00</p>
+                  <p className="text-sm text-destructive">{t("recharge.minAmount1")}</p>
                 )}
 
                 {currentBalance !== null && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
                         <Wallet className="w-4 h-4" />
-                        <span>Saldo actual: <span className="font-medium text-foreground">${currentBalance.toFixed(2)}</span></span>
+                        <span>{t("recharge.currentBalance")} <span className="font-medium text-foreground">${currentBalance.toFixed(2)}</span></span>
                     </div>
                 )}
               </div>
@@ -348,15 +348,15 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                 <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center">
-                        <span>Recibirás:</span>
+                        <span>{t("recharge.youWillReceive")}</span>
                         <div className="flex items-center gap-2">
                             <Coins className="w-5 h-5 text-accent" />
-                            <span className="text-xl font-bold text-primary">{pointsEquivalent} Puntos</span>
+                            <span className="text-xl font-bold text-primary">{pointsEquivalent} {t("dashboard.points")}</span>
                         </div>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-primary/20">
-                         <span>Equivalente a:</span>
-                         <span className="font-medium text-foreground">{daysEquivalent} Días de uso</span>
+                         <span>{t("recharge.equivalentTo")}</span>
+                         <span className="font-medium text-foreground">{daysEquivalent} {t("recharge.daysOfUse")}</span>
                     </div>
                   </div>
                 </div>
@@ -368,14 +368,14 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
           {step === "payment" && selectedMethod && (
             <div className="space-y-6">
                 <div className="p-4 rounded-lg space-y-3">
-                  <h4 className="font-semibold text-primary">Datos para el pago:</h4>
+                  <h4 className="font-semibold text-primary">{t("recharge.paymentDataTitle")}</h4>
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Método:</span>
+                        <span className="text-muted-foreground">{t("recharge.method")}</span>
                         <span className="font-medium">{selectedMethod.name}</span>
                     </div>
                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Cuenta/Teléfono:</span>
+                        <span className="text-muted-foreground">{t("recharge.accountPhone")}</span>
                         <span className="font-medium text-right break-all">{selectedMethod.account}</span>
                     </div>
                      {/* Render extra data if available */}
@@ -388,7 +388,7 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                   </div>
                   <div className="pt-2 border-t border-border">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Monto a Pagar:</span>
+                      <span className="text-muted-foreground">{t("recharge.amountToPay")}</span>
                       <span className="text-xl font-bold text-primary">
                           {selectedMethod.money === 'bs' 
                             ? `${bsAmount.toLocaleString()} Bs` 
@@ -397,14 +397,14 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                     </div>
                     {selectedMethod.money === 'bs' && (
                         <p className="text-xs text-muted-foreground mt-1">
-                            Tasa: {loadingRate ? <Loader2 className="w-3 h-3 animate-spin inline"/> : (exchangeRate || EXCHANGE_RATE).toFixed(2)} Bs/USD
+                            {t("recharge.rate")} {loadingRate ? <Loader2 className="w-3 h-3 animate-spin inline"/> : (exchangeRate || EXCHANGE_RATE).toFixed(2)} Bs/USD
                         </p>
                     )}
                   </div>
                 </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reference">Número de Referencia</Label>
+                <Label htmlFor="reference">{t("recharge.reference")}</Label>
                 <Input
                   id="reference"
                   placeholder="Ej: 123456789"
@@ -431,17 +431,17 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                     {isUploading ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            Subiendo...
+                            {t("recharge.uploading")}
                         </>
                     ) : (
                         <>
                             {proofKey ? <CheckCircle className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
-                            {proofKey ? "Comprobante Cargado" : "Cargar Comprobante"}
+                            {proofKey ? t("recharge.proofUploaded") : t("recharge.uploadProof")}
                         </>
                     )}
                 </Button>
                 {proofKey && (
-                    <p className="text-xs text-center text-green-600 mt-1">Archivo listo para enviar</p>
+                    <p className="text-xs text-center text-green-600 mt-1">{t("recharge.fileReady")}</p>
                 )}
               </div>
 
@@ -453,7 +453,7 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
                   className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  Reportar por WhatsApp
+                  {t("recharge.reportWhatsApp")}
                 </a>
               </div>
             </div>
@@ -464,40 +464,40 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
             <div className="space-y-4">
               <div className="p-4 bg-primary/10 rounded-lg border border-primary/30 text-center">
                 <CheckCircle className="w-12 h-12 text-primary mx-auto mb-3" />
-                <h4 className="text-lg font-bold">¡Casi listo!</h4>
+                <h4 className="text-lg font-bold">{t("recharge.almostDone")}</h4>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Por favor revisa los datos antes de confirmar.
+                  {t("recharge.reviewData")}
                 </p>
               </div>
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between p-2 rounded">
-                  <span className="text-muted-foreground">Método</span>
+                  <span className="text-muted-foreground">{t("recharge.method")}</span>
                   <span className="font-medium">{selectedMethod.name}</span>
                 </div>
                 <div className="flex justify-between p-2 rounded">
-                  <span className="text-muted-foreground">Monto USD</span>
+                  <span className="text-muted-foreground">{t("recharge.amountUsdLabel")}</span>
                   <span className="font-medium">${amountNum}</span>
                 </div>
                 {selectedMethod.money === 'bs' && (
                   <div className="flex justify-between p-2 rounded">
-                    <span className="text-muted-foreground">Monto en Bs</span>
+                    <span className="text-muted-foreground">{t("recharge.amountBsLabel")}</span>
                     <span className="font-medium">{bsAmount.toLocaleString()} Bs</span>
                   </div>
                 )}
                 <div className="flex justify-between p-2 rounded">
-                  <span className="text-muted-foreground">Puntos a recibir</span>
-                  <span className="font-bold text-primary">{pointsEquivalent} (+{daysEquivalent} días)</span>
+                  <span className="text-muted-foreground">{t("recharge.pointsReceive")}</span>
+                  <span className="font-bold text-primary">{pointsEquivalent} (+{daysEquivalent} {t("recharge.daysOfUse")})</span>
                 </div>
                 {reference && (
                   <div className="flex justify-between p-2 rounded">
-                    <span className="text-muted-foreground">Referencia</span>
+                    <span className="text-muted-foreground">{t("recharge.referenceLabel")}</span>
                     <span className="font-medium">{reference}</span>
                   </div>
                 )}
                 <div className="flex justify-between p-2 rounded">
-                    <span className="text-muted-foreground">Comprobante</span>
-                    <span className="font-medium">{proofKey ? "Cargado" : "No cargado"}</span>
+                    <span className="text-muted-foreground">{t("recharge.receiptLabel")}</span>
+                    <span className="font-medium">{proofKey ? t("recharge.uploaded") : t("recharge.notUploaded")}</span>
                 </div>
               </div>
             </div>
@@ -509,7 +509,7 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
           {step !== "method" && (
             <Button variant="outline" onClick={goBack} className="flex-1" disabled={isSubmitting}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Atrás
+              {t("recharge.back")}
             </Button>
           )}
           {step !== "confirm" ? (
@@ -518,7 +518,7 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
               disabled={!canProceed() || isLoadingMethods}
               className="flex-1 box-glow-green"
             >
-              Siguiente
+              {t("recharge.next")}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
@@ -526,10 +526,10 @@ const RechargeDialog = ({ open, onOpenChange }: RechargeDialogProps) => {
               {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Procesando...
+                    {t("recharge.processing")}
                   </>
               ) : (
-                  "Confirmar Recarga"
+                  t("recharge.confirmRecharge")
               )}
             </Button>
           )}

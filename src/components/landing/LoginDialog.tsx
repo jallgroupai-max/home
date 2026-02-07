@@ -103,9 +103,6 @@ const LoginDialog = ({ open, onOpenChange, onSwitchToRegister }: LoginDialogProp
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? t("login.loading") : t("login.submit")}
           </Button>
-          <div className="text-center text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
-            <span className="font-medium">{t("login.demo")}</span> demo@jallai.com / demo123
-          </div>
           <p className="text-center text-sm text-muted-foreground">
             {t("login.noAccount")}{" "}
             <button
