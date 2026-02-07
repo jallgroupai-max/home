@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
-import { Coins, Home, Sparkles, Play, Mic, Menu, X, LogOut, Plus, MessageSquarePlus, Clock, HelpCircle } from "lucide-react";
+import { Coins, Home, Sparkles, Play, Mic, Menu, X, LogOut, Plus, MessageSquarePlus, Clock, HelpCircle, Wallet } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -17,8 +17,35 @@ import {
 import AccountMenu from "@/components/dashboard/AccountMenu";
 import RechargeDialog from "@/components/dashboard/RechargeDialog";
 import FeedbackDialog from "@/components/dashboard/FeedbackDialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiService } from "@/lib/api";
+import { walletsService } from "@/lib/wallets.service";
 
 type ToolType = "chatgpt" | "elevenlabs" | "aiultra";
+
+type Provider = {
+  id: string;
+  typeProvider: string;
+  finalPrice: number;
+  active: boolean;
+  redirectUrl?: string; // Added this
+};
+
+type Account = {
+  id: string;
+  providerId: string;
+  provider: Provider;
+};
+
+type UserAccount = {
+  id: string;
+  userId: string;
+  accountId: string;
+  active: boolean;
+  expiresAt: string;
+  accessToken?: string;
+  account: Account;
+};
 
 const ToolHelpButton = ({ tool }: { tool: ToolType }) => {
   const { t } = useLanguage();
@@ -88,7 +115,7 @@ const ToolHelpButton = ({ tool }: { tool: ToolType }) => {
       </PopoverTrigger>
       <PopoverContent className="w-80" align="center">
         <div className="space-y-3">
-          <h4 className="font-semibold text-foreground">{titles[tool]}</h4>
+          <h4 className="font-semibold text-white">{titles[tool]}</h4>
           <ul className="space-y-2">
             {features[tool].map((feature, index) => (
               <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -108,7 +135,13 @@ const DEMO_MEMBERSHIP_END = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
 type TabType = "inicio" | "chatgpt" | "elevenlabs" | "aiultra";
 
-const ChatGPTMembership = () => {
+type ChatGPTMembershipProps = {
+  membershipEnd: Date;
+  redirectUrl?: string;
+  accessToken?: string;
+};
+
+const ChatGPTMembership = ({ membershipEnd, redirectUrl, accessToken }: ChatGPTMembershipProps) => {
   const { t } = useLanguage();
   const [timeRemaining, setTimeRemaining] = useState("");
 
@@ -133,13 +166,13 @@ const ChatGPTMembership = () => {
   };
 
   useEffect(() => {
-    setTimeRemaining(formatTimeRemaining(DEMO_MEMBERSHIP_END));
+    setTimeRemaining(formatTimeRemaining(membershipEnd));
     const interval = setInterval(() => {
-      setTimeRemaining(formatTimeRemaining(DEMO_MEMBERSHIP_END));
+      setTimeRemaining(formatTimeRemaining(membershipEnd));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [membershipEnd]);
 
   return (
     <div className="text-center space-y-6 max-w-lg mx-auto">
@@ -152,15 +185,15 @@ const ChatGPTMembership = () => {
           <ToolHelpButton tool="chatgpt" />
         </h2>
         <div className="flex justify-center">
-          <div className="inline-block px-4 py-2 bg-primary/20 rounded-full">
-            <span className="text-primary font-semibold">{t("dashboard.membershipActive")}</span>
+          <div className="inline-block px-4 py-2 bg-accent/20 rounded-full">
+            <span className="text-wwhite font-bold">{t("dashboard.membershipActive")}</span>
           </div>
         </div>
       </div>
       
       {/* Countdown Timer */}
-      <div className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary rounded-lg border border-border">
-        <Clock className="w-5 h-5 text-accent" />
+      <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg">
+        <Clock className="w-5 h-5 text-primary" />
         <span className="text-muted-foreground">{t("dashboard.timeRemaining")}</span>
         <span className="font-mono font-bold text-foreground">{timeRemaining}</span>
       </div>
@@ -173,7 +206,7 @@ const ChatGPTMembership = () => {
         className="box-glow-cyan"
         size="lg"
       >
-        <a href="https://gpt.jall.lat/" target="_blank" rel="noopener noreferrer">
+        <a href={(redirectUrl || "https://gpt.jall.lat/") + (accessToken ? `?token=${accessToken}` : '')} target="_blank" rel="noopener noreferrer">
           {t("dashboard.openChatGPT")}
         </a>
       </Button>
@@ -185,10 +218,108 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>("inicio");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showRechargeDialog, setShowRechargeDialog] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [balance, setBalance] = useState<number>(0);
+  const [loadingTool, setLoadingTool] = useState(false);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [userAccounts, setUserAccounts] = useState<UserAccount[]>([]);
+  const { token } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetchWallet();
+      fetchInitialData();
+      const interval = setInterval(() => {
+        fetchWallet();
+        // optionally refresh accounts to check expiry
+        fetchUserAccounts();
+      }, 5000); 
+
+      return () => clearInterval(interval);
+    }
+  }, [user, showRechargeDialog]);
+
+  const fetchInitialData = async () => {
+    if (!token) return;
+    try {
+      const [providersData, accountsData] = await Promise.all([
+        apiService.get<Provider[]>('/providers/find/all', token),
+        apiService.get<UserAccount[]>('/user-accounts/my-accounts', token)
+      ]);
+      setProviders(providersData);
+      setUserAccounts(accountsData);
+    } catch (error) {
+      console.error("Failed to fetch initial data", error);
+    }
+  };
+
+  const fetchUserAccounts = async () => {
+      if (!token) return;
+      try {
+          const accountsData = await apiService.get<UserAccount[]>('/user-accounts/my-accounts', token);
+          setUserAccounts(accountsData);
+      } catch (error) {
+          console.error("Failed to fetch user accounts", error);
+      }
+  }
+
+  const fetchWallet = async () => {
+    if (!user) return;
+    try {
+      const wallet = await walletsService.getByUserId(user.id, token!);
+      setBalance(wallet.balance);
+    } catch (error) {
+      console.error("Failed to fetch wallet", error);
+    }
+  };
+
+  const handleActivate = async (tool: ToolType) => {
+      if (!user || !token) return;
+      
+      const providerTypeMap: Record<ToolType, string> = {
+          chatgpt: 'ChatGPT',
+          elevenlabs: 'ElevenLabs',
+          aiultra: 'AIUltra' 
+      };
+
+      const provider = providers.find(p => p.typeProvider === providerTypeMap[tool] || (tool === 'chatgpt' && p.typeProvider === 'ChatGPT'));
+      
+      if (!provider) {
+          toast({ title: "Error", description: "Provider not found", variant: "destructive" });
+          return;
+      }
+
+      setLoadingTool(true);
+      try {
+          await apiService.post('/user-accounts/assign', {
+              userId: user.id,
+              providerId: provider.id
+          }, token);
+          
+          toast({ title: "Success", description: "Membership activated successfully!", variant: "default" });
+          await Promise.all([fetchWallet(), fetchUserAccounts()]);
+          
+          // Open the URL directly
+          if (provider.redirectUrl) {
+              window.open(provider.redirectUrl, '_blank');
+          }
+
+      } catch (error: any) {
+          console.error(error);
+          if (error.message?.includes('saldo') || error.message?.includes('balance')) {
+              toast({ title: "Insufficient Balance", description: "Please recharge your wallet.", variant: "destructive" });
+              setShowRechargeDialog(true);
+          } else {
+              toast({ title: "Error", description: error.message || "Failed to activate.", variant: "destructive" });
+          }
+      } finally {
+          setLoadingTool(false);
+      }
+  };
 
   const handleLogout = () => {
     logout();
@@ -237,11 +368,58 @@ const Dashboard = () => {
       aiultra: "Google AI Ultra",
     };
 
-    // ChatGPT - Active for demo user
+    // ChatGPT Logic
     if (activeTab === "chatgpt") {
-      return (
-        <ChatGPTMembership />
-      );
+        const chatGPTProvider = providers.find(p => p.typeProvider === 'ChatGPT');
+        const activeAccount = userAccounts.find(ua => ua.active && ua.account?.provider?.typeProvider === 'ChatGPT');
+
+        // Check if expired logic (though backend handles 'active' status usually)
+        const isActive = activeAccount && new Date(activeAccount.expiresAt) > new Date();
+
+        if (isActive && activeAccount) {
+            return (
+                <ChatGPTMembership 
+                    membershipEnd={new Date(activeAccount.expiresAt)} 
+                    redirectUrl={activeAccount.account.provider.redirectUrl}
+                    accessToken={activeAccount.accessToken}
+                />
+            );
+        }
+
+        // Inactive - Show Subscribe/Recharge UI
+        const price = chatGPTProvider?.finalPrice || 0;
+        const canAfford = balance >= price;
+
+        return (
+            <div className="text-center space-y-6 max-w-lg mx-auto">
+                <div className="w-20 h-20 mx-auto bg-accent/20 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-10 h-10 text-accent" />
+                </div>
+                <h2 className="text-2xl font-bold inline-flex items-center justify-center">
+                    {t("dashboard.noAccess")} ChatGPT Plus
+                    <ToolHelpButton tool="chatgpt" />
+                </h2>
+                <p className="text-muted-foreground">
+                    {canAfford 
+                        ? `Activate 24h access for $${price.toFixed(2)}?` 
+                        : t("dashboard.noAccessDesc")
+                    }
+                </p>
+                <Button
+                    onClick={() => canAfford ? handleActivate('chatgpt') : handleRecharge()}
+                    className="box-glow-green"
+                    size="lg"
+                    disabled={loadingTool}
+                >
+                    {loadingTool 
+                        ? "Activating..." 
+                        : canAfford 
+                            ? "Activate Plan" 
+                            : t("dashboard.rechargeNow")
+                    }
+                </Button>
+            </div>
+        );
     }
 
     // Eleven Labs - Coming Soon
@@ -258,11 +436,11 @@ const Dashboard = () => {
             </h2>
             <div className="flex justify-center">
               <div className="inline-block px-4 py-2 bg-accent/20 rounded-full">
-                <span className="text-accent font-semibold">{t("dashboard.comingSoon")}</span>
+                <span className="text-white font-bold">{t("dashboard.comingSoon")}</span>
               </div>
             </div>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-white">
             {t("dashboard.elevenLabsDesc")}
           </p>
           <Button
@@ -285,16 +463,21 @@ const Dashboard = () => {
           {t("dashboard.noAccess")} {toolNames[activeTab]}
           {activeTab === "aiultra" && <ToolHelpButton tool="aiultra" />}
         </h2>
-        <p className="text-muted-foreground">
-          {t("dashboard.noAccessDesc")}
+        <div className="flex justify-center">
+              <div className="inline-block px-4 py-2 bg-accent/20 rounded-full">
+                <span className="text-white font-bold">{t("dashboard.comingSoon")}</span>
+              </div>
+        </div>  
+        <p className="text-white">
+            {t("dashboard.aiultraDesc")}
         </p>
         <Button
-          onClick={handleRecharge}
-          className="box-glow-green"
-          size="lg"
-        >
-          {t("dashboard.rechargeNow")}
-        </Button>
+            onClick={() => setActiveTab("inicio")}
+            variant="outline"
+            size="lg"
+          >
+            {t("dashboard.backHome")}
+          </Button>
       </div>
     );
   };
@@ -318,8 +501,8 @@ const Dashboard = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                     activeTab === tab.id
-                      ? "bg-primary/20 text-primary"
-                      : "text-foreground/80 hover:bg-secondary"
+                      ? "bg-white/20 text-primary font-bold"
+                      : "text-white hover:bg-secondary font-bold"
                   }`}
                 >
                   <tab.icon className="w-4 h-4" />
@@ -332,9 +515,9 @@ const Dashboard = () => {
             <div className="hidden md:flex items-center gap-4">
               <HoverCard openDelay={100} closeDelay={200}>
                 <HoverCardTrigger asChild>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
-                    <Coins className="w-4 h-4 text-accent" />
-                    <span className="font-medium">{user?.points || 0} {t("dashboard.points")}</span>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-accent rounded-lg cursor-pointer hover:bg-accent/80 transition-colors">
+                    <Wallet className="w-4 h-4 text-white" />
+                    <span className="font-medium text-white">${balance?.toFixed(2) || "0.00"} Saldo</span>
                   </div>
                 </HoverCardTrigger>
                 <HoverCardContent className="w-48 p-2" align="end">

@@ -8,6 +8,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import Index from "./pages/Index";
 import Comprar from "./pages/Comprar";
 import Dashboard from "./pages/Dashboard";
+import Accounts from "./pages/Accounts";
 import NotFound from "./pages/NotFound";
 import TermsOfService from "./pages/legal/TermsOfService";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/comprar" element={<Comprar />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/accounts" element={<Accounts />} />
               <Route path="/terminos" element={<TermsOfService />} />
               <Route path="/privacidad" element={<PrivacyPolicy />} />
               <Route path="/reembolsos" element={<RefundPolicy />} />
