@@ -1,5 +1,4 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-console.log('HOME API Base URL:', API_BASE_URL); // Debugging
 
 interface RequestOptions extends RequestInit {
     token?: string;
