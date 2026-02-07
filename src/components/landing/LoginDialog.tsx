@@ -49,24 +49,23 @@ const LoginDialog = ({ open, onOpenChange, onSwitchToRegister }: LoginDialogProp
 
     setIsLoading(true);
     
-    setTimeout(() => {
-      if (email === DEFAULT_USER.email && password === DEFAULT_USER.password) {
-        login(email);
-        toast({
-          title: t("login.success"),
-          description: t("login.successDesc"),
-        });
-        onOpenChange(false);
-        navigate("/dashboard");
-      } else {
-        toast({
-          title: t("login.error.invalid"),
-          description: t("login.error.invalidDesc"),
-          variant: "destructive",
-        });
-      }
+    try {
+      await login(email, password);
+      toast({
+        title: t("login.success"),
+        description: t("login.successDesc"),
+      });
+      onOpenChange(false);
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: t("login.error.invalid"),
+        description: t("login.error.invalidDesc"),
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   return (
