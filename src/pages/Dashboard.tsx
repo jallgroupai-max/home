@@ -401,7 +401,7 @@ const Dashboard = () => {
                 </h2>
                 <p className="text-muted-foreground">
                     {canAfford 
-                        ? `Activate 24h access for $${price.toFixed(2)}?` 
+                        ? t("dashboard.activateAccess").replace("$0.30", `$${price.toFixed(2)}`)
                         : t("dashboard.noAccessDesc")
                     }
                 </p>
@@ -412,9 +412,9 @@ const Dashboard = () => {
                     disabled={loadingTool}
                 >
                     {loadingTool 
-                        ? "Activating..." 
+                        ? t("dashboard.activating")
                         : canAfford 
-                            ? "Activate Plan" 
+                            ? t("dashboard.activatePlan")
                             : t("dashboard.rechargeNow")
                     }
                 </Button>

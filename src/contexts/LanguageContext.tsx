@@ -199,6 +199,10 @@ export const translations = {
     "dashboard.noAccessDesc": "No tienes puntos suficientes para acceder a esta herramienta. Por favor recarga tu cuenta para continuar.",
     "dashboard.rechargeNow": "Recargar Ahora",
     "dashboard.expired": "Expirado",
+    "dashboard.activateAccess": "¿Activar acceso de 24h por $0.30?",
+    "dashboard.activatePlan": "Activar Plan",
+    "dashboard.activating": "Activando...",
+    "dashboard.rechargeToActivate": "Recarga para activar",
 
     // Account Menu
     "account.title": "Cuenta",
@@ -546,6 +550,10 @@ export const translations = {
     "dashboard.noAccessDesc": "You don't have enough points to access this tool. Please recharge your account to continue.",
     "dashboard.rechargeNow": "Recharge Now",
     "dashboard.expired": "Expired",
+    "dashboard.activateAccess": "Activate 24h access for $0.30?",
+    "dashboard.activatePlan": "Activate Plan",
+    "dashboard.activating": "Activating...",
+    "dashboard.rechargeToActivate": "Recharge to activate",
 
     // Account Menu
     "account.title": "Account",
